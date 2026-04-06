@@ -37,8 +37,7 @@ export async function POST(req: NextRequest) {
     await emitEventHandler("new-order", newOrder);
 
     const requestOrigin = req.nextUrl.origin;
-    const baseUrl =
-      process.env.NEXT_BASE_URL?.trim() || requestOrigin || "http://localhost:3000";
+    const baseUrl = process.env.NEXT_BASE_URL?.trim() || requestOrigin;
     const amountInPaise = Math.round(Number(totalAmount) * 100);
 
     if (!Number.isFinite(amountInPaise) || amountInPaise <= 0) {

@@ -9,7 +9,9 @@ const server = http.createServer(app);
 import { Server } from "socket.io";
 import axios from "axios";
 const port = process.env.PORT || 5000;
-const rawAppBaseUrl = process.env.NEXT_BASE_URL || "http://localhost:3000";
+const rawAppBaseUrl =
+  process.env.NEXT_BASE_URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 const appBaseUrl = rawAppBaseUrl.replace("http://localhost", "http://127.0.0.1");
 const allowedOrigins = [...new Set([
   rawAppBaseUrl,
