@@ -9,14 +9,17 @@ const server = http.createServer(app);
 import { Server } from "socket.io";
 import axios from "axios";
 const port = process.env.PORT || 5000;
-const appBaseUrl = (process.env.NEXT_BASE_URL || "http://127.0.0.1:3000").replace(
-  "http://localhost",
-  "http://127.0.0.1"
-);
+const rawAppBaseUrl = process.env.NEXT_BASE_URL || "http://localhost:3000";
+const appBaseUrl = rawAppBaseUrl.replace("http://localhost", "http://127.0.0.1");
+const allowedOrigins = [...new Set([
+  rawAppBaseUrl,
+  rawAppBaseUrl.replace("http://127.0.0.1", "http://localhost"),
+  rawAppBaseUrl.replace("http://localhost", "http://127.0.0.1"),
+])];
 
 const io = new Server(server, {
   cors: {
-    origin: appBaseUrl,
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
   },
 });
@@ -91,7 +94,20 @@ app.post("/notify", (req, res)=>{
   return res.status(200).json({ success: true });
 })
 
+server.on("error", (error) => {
+  if (error.code === "EADDRINUSE") {
+    console.error(
+      `Port ${port} is already in use. Stop the other socket server process or change PORT in socketServer/.env.`
+    );
+    process.exit(1);
+  }
+
+  console.error("Socket server failed to start:", error);
+  process.exit(1);
+});
+
 server.listen(port, () => {
   console.log(`server running on port: ${port}`);
   console.log(`socket server using app base url: ${appBaseUrl}`);
+  console.log(`socket server allowed origins: ${allowedOrigins.join(", ")}`);
 });
