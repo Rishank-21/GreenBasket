@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-interface IOrder{
+export interface IOrder{
     _id?:mongoose.Types.ObjectId,
     user:mongoose.Types.ObjectId,
     items:[
@@ -26,9 +26,14 @@ interface IOrder{
         latitude:number,
         longitude:number
     },
+    assignment?:mongoose.Types.ObjectId,
+    assignedDeliveryBoy?: mongoose.Types.ObjectId,
     status:"pending"|"out of delivery"|"delivered",
     createdAt?:Date,
-    updatedAt?:Date
+    updatedAt?:Date,
+    deliveryOtp?:string | null
+    deliveryOtpVerification:boolean,
+    deliveredAt:Date | null
 }
 
 
@@ -75,10 +80,31 @@ const orderSchema = new mongoose.Schema<IOrder>({
         latitude:Number,
         longitude:Number
     },
+    assignment:{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"DeliveryAssignment",
+        default:null,
+    },
+    assignedDeliveryBoy:{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"User",
+    },
     status:{
         type:String,
         enum:["pending", "out of delivery", "delivered"],
         default:"pending"
+    },
+    deliveryOtp:{
+        type:String,
+        default:null
+    },
+    deliveryOtpVerification:{
+        type:Boolean,
+        default:false
+    },
+    deliveredAt:{
+        type:Date,
+        default:null
     }
 },{timestamps:true})
 

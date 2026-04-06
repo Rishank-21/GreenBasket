@@ -12,28 +12,22 @@ import {
   MapPin,
   MapPinCheck,
   Navigation,
-  Navigation2Icon,
   Phone,
-  Pin,
-  Search,
   Truck,
   User,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
-import L, { LatLngExpression } from "leaflet";
-import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
- import "leaflet/dist/leaflet.css";
+
 
 import axios from "axios";
-import { OpenStreetMapProvider } from "leaflet-geosearch";
 
-const markerIcon = new L.Icon({
-  iconUrl: "https://cdn-icons-png.flaticon.com/128/4821/4821951.png",
-  iconSize: [40, 40],
-  iconAnchor: [20, 40],
+import dynamic from "next/dynamic";
+const CheckoutMap = dynamic(() => import("@/components/CheckoutMap"), {
+  ssr: false,
 });
+
 const CheckOut = () => {
   const router = useRouter();
   const { userData } = useSelector((state: RootState) => state.user);
@@ -51,6 +45,7 @@ const CheckOut = () => {
   const [position, setPosition] = useState<[number, number] | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "online">("cod");
   useEffect(() => {
     if (navigator.geolocation) {
@@ -74,30 +69,11 @@ const CheckOut = () => {
     }
   }, [userData]);
 
-  const DraggableMarker: React.FC = () => {
-    const map = useMap();
-    useEffect(() => {
-      map.setView(position as LatLngExpression, 15, { animate: true });
-    }, [position, map]);
-    return (
-      <Marker
-        icon={markerIcon}
-        position={position as LatLngExpression}
-        draggable={true}
-        eventHandlers={{
-          dragend: (e: L.LeafletEvent) => {
-            const marker = e.target as L.Marker;
-            const { lat, lng } = marker.getLatLng();
-            setPosition([lat, lng]);
-          },
-        }}
-      />
-    );
-  };
 
   const handleSearchQuery = async () => {
     setSearchLoading(true);
-    const provider = new OpenStreetMapProvider();
+    const openStreetMapProvider = (await import("leaflet-geosearch")).OpenStreetMapProvider;
+    const provider = new openStreetMapProvider();
     const result = await provider.search({ query: searchQuery });
     if (result) {
       setPosition([result[0].y, result[0].x]);
@@ -146,7 +122,7 @@ const CheckOut = () => {
   const handleCod = async () => {
     if (!position) return null;
     try {
-      const result = await axios.post("/api/user/order", {
+      await axios.post("/api/user/order", {
         userId: userData?._id,
         items: cartData.map((item) => ({
           grocery: item._id,
@@ -176,10 +152,11 @@ const CheckOut = () => {
   };
 
 
-  const handleOnlinePayment = async () =>{
-     if (!position) return null;
+  const handleOnlinePayment = async () => {
+    if (!position || paymentLoading) return null;
+    setPaymentLoading(true);
     try {
-      const res = await axios.post("/api/user/payment",{
+      const res = await axios.post("/api/user/payment", {
         userId: userData?._id,
         items: cartData.map((item) => ({
           grocery: item._id,
@@ -201,12 +178,20 @@ const CheckOut = () => {
           longitude: position[1],
         },
         paymentMethod,
-      })
-      window.location.href=res.data.url
+      });
+
+      if (!res.data?.url) {
+        throw new Error("Stripe checkout URL was not returned");
+      }
+
+      window.location.href = res.data.url;
     } catch (error) {
-      console.log(error)
+      console.log(error);
+      alert("Unable to open Stripe payment right now. Please try again.");
+    } finally {
+      setPaymentLoading(false);
     }
-  }
+  };
 
   return (
     <div className="w-[92%] md:w-[80%] mx-auto py-10 relative">
@@ -364,18 +349,7 @@ const CheckOut = () => {
 
             <div className="relative mt-6 h-82.5 rounded-xl overflow-hidden border border-gray-200 shadow-inner">
               {position && (
-                <MapContainer
-                  center={position as LatLngExpression}
-                  zoom={13}
-                  scrollWheelZoom={true}
-                  className="w-full h-full"
-                >
-                  <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-                  <DraggableMarker />
-                </MapContainer>
+                <CheckoutMap position={position} setPosition={setPosition} />
               )}
 
               <motion.button
@@ -447,17 +421,21 @@ const CheckOut = () => {
           </div>
           <motion.button
             whileTap={{ scale: 0.93 }}
-            className="w-full mt-6 bg-green-600 text-white py-3 rounded-full hover:bg-green-700 transition-all font-semibold cursor-pointer"
+            className="w-full mt-6 bg-green-600 text-white py-3 rounded-full hover:bg-green-700 transition-all font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
+            disabled={paymentMethod === "online" && paymentLoading}
             onClick={() => {
               if (paymentMethod === "cod") {
                 handleCod();
               } else {
                 handleOnlinePayment();
-                
               }
             }}
           >
-            {paymentMethod == "cod" ? "Place Order" : "Make Payment"}
+            {paymentMethod === "cod"
+              ? "Place Order"
+              : paymentLoading
+              ? "Opening Stripe..."
+              : "Make Payment"}
           </motion.button>
         </motion.div>
       </div>

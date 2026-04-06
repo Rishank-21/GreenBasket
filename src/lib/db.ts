@@ -13,21 +13,26 @@ if(!cache){
 
 
 const connectDB = async () => {
-    if(cache.conn){
+    if (cache.conn) {
         return cache.conn;
     }
 
-    if(!cache.promise){
-        cache.promise = mongoose.connect(mongodbUrl).then((conn) => 
-            conn.connection
-        )
+    if (!cache.promise) {
+        // Add a server selection timeout to fail faster during debugging
+        cache.promise = mongoose
+            .connect(mongodbUrl, { serverSelectionTimeoutMS: 10000 })
+            .then((conn) => conn.connection);
     }
+
     try {
         const conn = await cache.promise;
+        cache.conn = conn;
         return conn;
     } catch (error) {
-        console.log(error)
+        console.error('MongoDB connection error:', error);
+        // Re-throw so callers can handle the failure instead of silently proceeding
+        throw error;
     }
-}
+};
 
 export default connectDB;

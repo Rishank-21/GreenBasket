@@ -16,17 +16,17 @@ import {
   X,
   XIcon,
 } from "lucide-react";
-import mongoose from "mongoose";
 import { AnimatePresence, motion, spring } from "motion/react";
 import { signOut } from "next-auth/react";
 import Link from "next/dist/client/link";
 import Image from "next/image";
-import React, { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import React, { FormEvent, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSelector } from "react-redux";
 
 interface IUser {
-  _id?: mongoose.Types.ObjectId;
+  _id?: string;
   name: string;
   email: string;
   password?: string;
@@ -39,7 +39,9 @@ const Nav = ({ user }: { user: IUser }) => {
   const profileDropDownRef = useRef<HTMLDivElement>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const { cartData } = useSelector((state:RootState) => state.cart)
+  const { cartData } = useSelector((state: RootState) => state.cart);
+  const [search, setSearch] = useState("");
+  const router = useRouter();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -54,6 +56,15 @@ const Nav = ({ user }: { user: IUser }) => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    const query = search.trim();
+    if (!query) return router.push(`/`);
+    return router.push(`/?q=${encodeURIComponent(query)}`);
+    setSearch("");
+    setSearchOpen(false);
+  };
 
   const sideBar = menuOpen
     ? createPortal(
@@ -109,14 +120,14 @@ const Nav = ({ user }: { user: IUser }) => {
                 Add Grocery
               </Link>
               <Link
-                href={""}
+                href={"/admin/view-grocery"}
                 className="flex items-center gap-3 p-3 rounded-lg bg-white/10 hover:bg-white/20 hover:pl-4 transition-all"
               >
                 <Boxes className="w-5 h-5" />
                 View Grocery
               </Link>
               <Link
-                href={""}
+                href={"/admin/manage-orders"}
                 className="flex items-center gap-3 p-3 rounded-lg bg-white/10 hover:bg-white/20 hover:pl-4 transition-all"
               >
                 <ClipboardCheck className="w-5 h-5" />
@@ -126,13 +137,16 @@ const Nav = ({ user }: { user: IUser }) => {
 
             <div className="my-5 border-t border-white/20"></div>
 
-            <div className="flex w-full bg-red-200 items-center justify-center gap-3 text-red-600 font-semibold mt-auto hover:bg-red-500/20 p-3 rounded-md transition-all" onClick={async() => await signOut({callbackUrl:"/"})}>
-                <LogOutIcon className="w-5 h-5 text-red-500 "/>
-                Log Out
+            <div
+              className="flex w-full bg-red-200 items-center justify-center gap-3 text-red-600 font-semibold mt-auto hover:bg-red-500/20 p-3 rounded-md transition-all"
+              onClick={async () => await signOut({ callbackUrl: "/" })}
+            >
+              <LogOutIcon className="w-5 h-5 text-red-500 " />
+              Log Out
             </div>
           </motion.div>
         </AnimatePresence>,
-        document.body
+        document.body,
       )
     : null;
 
@@ -148,12 +162,15 @@ const Nav = ({ user }: { user: IUser }) => {
         <form
           action=""
           className="hidden md:flex items-center bg-white rounded-full px-4 py-2 w-1/2 max-w-lg shadow-md"
+          onSubmit={handleSubmit}
         >
           <Search className="text-gray-500 w-5 h-5 mr-2" />
           <input
             type="text"
             className="w-full outline-none"
             placeholder="Search for products"
+            onChange={(e) => setSearch(e.target.value)}
+            value={search}
           />
         </form>
       )}
@@ -194,14 +211,14 @@ const Nav = ({ user }: { user: IUser }) => {
                 Add Grocery
               </Link>
               <Link
-                href={""}
+                href={"/admin/view-grocery"}
                 className="flex items-center gap-2 bg-white text-green-700 font-semibold px-4 py-2 rounded-full hover:bg-green-100 transition-all"
               >
                 <Boxes className="w-5 h-5" />
                 View Grocery
               </Link>
               <Link
-                href={""}
+                href={"/admin/manage-orders"}
                 className="flex items-center gap-2 bg-white text-green-700 font-semibold px-4 py-2 rounded-full hover:bg-green-100 transition-all"
               >
                 <ClipboardCheck className="w-5 h-5" />
@@ -268,7 +285,7 @@ const Nav = ({ user }: { user: IUser }) => {
 
                 {user.role === "user" && (
                   <Link
-                    href={""}
+                    href={"/user/my-orders"}
                     className="flex items-center gap-2 px-3 py-3 hover:bg-green-50 rounded-lg text-gray-700 font-medium"
                     onClick={() => setOpen(false)}
                   >
@@ -301,11 +318,13 @@ const Nav = ({ user }: { user: IUser }) => {
                 className="fixed top-24 left-1/2 -translate-x-1/2 w-[90%] bg-white rounded-full shadow-lg z-40 flex items-center px-4 py-2"
               >
                 <Search className="text-gray-500 w-5 h-5 mr-2" />
-                <form action="" className="grow">
+                <form action="" className="grow" onSubmit={handleSubmit}>
                   <input
                     type="text"
                     placeholder="search products"
                     className="w-full outline-none text-gray-700"
+                    onChange={(e) => setSearch(e.target.value)}
+                    value={search}
                   />
                 </form>
                 <button>

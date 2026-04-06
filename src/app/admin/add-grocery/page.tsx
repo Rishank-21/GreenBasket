@@ -47,7 +47,7 @@ setBackendImage(file)
 setPreviewImage(URL.createObjectURL(file))
 }
 
-const handleSubmit = async (e:FormEvent)=> {
+const handleSubmit = async (e: FormEvent) => {
   e.preventDefault()
   try {
     setLoading(true)
@@ -56,18 +56,27 @@ const handleSubmit = async (e:FormEvent)=> {
     formData.append("category", category)
     formData.append("unit", unit)
     formData.append("price", price)
-    if(backendImage){
+    if (backendImage) {
       formData.append("image", backendImage)
     }
-    
-    const result = await axios.post('/api/admin/add-grocery',formData)
+
+    const result = await axios.post('/api/admin/add-grocery', formData)
     console.log(result.data)
+
+  
+    setName("")
+    setCategory("")
+    setUnit("")
+    setPrice("")
+    setPreviewImage(null)
+    setBackendImage(null)
+
+    alert("Grocery added")
     setLoading(false)
   } catch (error) {
     console.log(error)
     setLoading(false)
   }
-
 }
   return (
     <div className='min-h-screen flex items-center justify-center bg-linear-to-b from-green-50 to-white py-16 px-4 relative'>
